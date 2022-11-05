@@ -20,6 +20,9 @@ data/test/true/*.png
 data/test/false/*.jpg
 data/test/false/*.jpeg 
 data/test/false/*.png
+data/test/*.jpg
+data/test/*.jpeg 
+data/test/*.png
 notebook/
 
 # General

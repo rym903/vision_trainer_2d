@@ -1,7 +1,3 @@
-import glob
-import os
-import random
-
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -21,6 +17,8 @@ import seaborn as sns
 import timm
 from pprint import pprint
 
+from utils import ImageFolder, fine_tune, seed_everything, get_img_name
+
 # from google.colab import drive
 # drive.mount('/content/drive')
 
@@ -29,25 +27,12 @@ epochs = 50
 lr = 3e-5
 gamma = 0.7
 seed = 42
-
-
-def seed_everything(seed):
-    random.seed(seed)
-    os.environ["PYTHONHASHSEED"] = str(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
-    torch.backends.cudnn.deterministic = True
-
-
-seed_everything(seed)
-
 device = "cuda"
-
 train_dataset_dir = Path("./data/train")
 val_dataset_dir = Path("./data/valid")
+test_dataset_dir = Path("./data/test")
 
+seed_everything(seed)
 
 train_transforms = transforms.Compose(
     [
@@ -69,6 +54,7 @@ val_transforms = transforms.Compose(
     ]
 )
 
+
 train_data = datasets.ImageFolder(train_dataset_dir, train_transforms)
 valid_data = datasets.ImageFolder(val_dataset_dir, val_transforms)
 train_loader = DataLoader(dataset=train_data, batch_size=16, shuffle=True)
@@ -84,53 +70,33 @@ optimizer = optim.Adam(model.parameters(), lr=lr)
 # scheduler
 scheduler = StepLR(optimizer, step_size=1, gamma=gamma)
 
-train_acc_list = []
-val_acc_list = []
-train_loss_list = []
-val_loss_list = []
-
-for epoch in range(epochs):
-    epoch_loss = 0
-    epoch_accuracy = 0
-
-    for data, label in tqdm(train_loader):
-        # data = data.to(device)
-        # label = label.to(device)
-
-        output = model(data)
-        loss = criterion(output, label)
-
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-
-        acc = (output.argmax(dim=1) == label).float().mean()
-        epoch_accuracy += acc / len(train_loader)
-        epoch_loss += loss / len(train_loader)
-
-    with torch.no_grad():
-        epoch_val_accuracy = 0
-        epoch_val_loss = 0
-        for data, label in valid_loader:
-            data = data.to(device)
-            label = label.to(device)
-
-            val_output = model(data)
-            val_loss = criterion(val_output, label)
-
-            acc = (val_output.argmax(dim=1) == label).float().mean()
-            epoch_val_accuracy += acc / len(valid_loader)
-            epoch_val_loss += val_loss / len(valid_loader)
-
-    print(
-        f"Epoch : {epoch+1} - loss : {epoch_loss:.4f} - acc: {epoch_accuracy:.4f} - val_loss : {epoch_val_loss:.4f} - val_acc: {epoch_val_accuracy:.4f}\n"
-    )
-    train_acc_list.append(epoch_accuracy)
-    val_acc_list.append(epoch_val_accuracy)
-    train_loss_list.append(epoch_loss)
-    val_loss_list.append(epoch_val_loss)
+fine_tune(
+    model,
+    criterion,
+    optimizer,
+    scheduler,
+    train_loader,
+    valid_loader,
+    device,
+    epochs,
+    model_name="test",
+)
 
 
-# モデルの保存
-model = model.to("cpu")
-torch.save(model.state_dict(), "model/model_cpu.pth")
+# 推論
+# Dataset を作成する。
+test_dataset = ImageFolder(test_dataset_dir, val_transforms)
+# DataLoader を作成する。
+test_dataloader = DataLoader(test_dataset, batch_size=8)
+
+predict_df = pd.DataFrame({"path": [], "label": []}, dtype=(str, int))
+for batch in test_dataloader:
+    inputs = batch["image"].to(device)
+    outputs = model(inputs)
+
+    labels = outputs.argmax(dim=1)
+
+    result = {"path": batch["path"], "label": labels.to(torch.int64).to("cpu")}
+    predict_df = pd.concat([predict_df, pd.DataFrame(result)])
+
+predict_df["img_name"] = predict_df["path"].apply(get_img_name)
