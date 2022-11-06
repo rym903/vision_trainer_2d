@@ -3,6 +3,8 @@ import os
 import random
 import re
 from pathlib import Path
+import urllib
+import time
 
 import datetime
 import numpy as np
@@ -14,6 +16,29 @@ from torch.nn import functional as F
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
 from torchvision.datasets.utils import download_url
+
+
+def download_file(url, dst_path):
+    try:
+        with urllib.request.urlopen(url) as web_file, open(
+            dst_path, "wb"
+        ) as local_file:
+            local_file.write(web_file.read())
+            print(dst_path + " is downloaded.")
+    except urllib.error.URLError as e:
+        print(e)
+
+
+# tweetからimgのurlを取り出す
+def get_img_urls(link, driver):
+    driver.get(link)
+    time.sleep(5)
+    text = driver.page_source
+    match = re.search(r"(https://pbs.twimg.com/media/[^\?]+\?format=[jpgeng]+)", text)
+    if not match:
+        return []
+    img_urls = match.groups()
+    return img_urls
 
 
 def seed_everything(seed):
@@ -108,7 +133,8 @@ def _get_img_paths(img_dir):
     return img_paths
 
 
-class ImageFolder(Dataset):
+# 予測だけを行うためのDatasetクラス。(ラベルフォルダが不要)
+class ImageFolderForPrediction(Dataset):
     def __init__(self, img_dir, transform):
         # 画像ファイルのパス一覧を取得する。
         self.img_paths = _get_img_paths(img_dir)
@@ -116,7 +142,8 @@ class ImageFolder(Dataset):
 
     def __getitem__(self, index):
         path = self.img_paths[index]
-        img = Image.open(path)
+        # grayscale画像も混じっているため、RGB変換する。
+        img = Image.open(path).convert("RGB")
         inputs = self.transform(img)
 
         return {"image": inputs, "path": path}

@@ -19,6 +19,10 @@ jupyter = "^1.0.0"
 timm = "^0.6.11"
 seaborn = "^0.12.1"
 vit-pytorch = "^0.36.2"
+tweepy = "^4.12.0"
+python-dotenv = "^0.21.0"
+lxml = "^4.9.1"
+selenium = "^4.6.0"
 
 [tool.poetry.dev-dependencies]
 numpy = "^1.23.4"
