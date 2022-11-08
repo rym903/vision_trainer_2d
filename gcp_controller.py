@@ -1,3 +1,7 @@
+from google.cloud import storage
+from google.oauth2 import service_account
+
+
 def to_storage(df_true, df_false):
     """予測の結果をGCSに保存する
 

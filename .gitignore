@@ -24,6 +24,7 @@ data/test/*.jpg
 data/test/*.jpeg 
 data/test/*.png
 notebook/
+secrets/*
 
 # General
 .DS_Store
