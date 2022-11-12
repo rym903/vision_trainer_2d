@@ -24,6 +24,7 @@ python-dotenv = "^0.21.0"
 lxml = "^4.9.1"
 selenium = "^4.6.0"
 google-auth = "^2.14.0"
+google-cloud-storage = "^2.6.0"
 
 [tool.poetry.dev-dependencies]
 numpy = "^1.23.4"
